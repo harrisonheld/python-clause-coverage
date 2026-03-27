@@ -1,0 +1,1 @@
+Run `python3 main.py --help` for instructions on how to use.
