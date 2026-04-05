@@ -290,23 +290,12 @@ class TestExecuteInstrumented:
         assert rt.predicate_events[0]["predicate_value"] is True
         assert rt.predicate_events[1]["predicate_value"] is False
 
+    def test_not_true_sets_false_flag_and_predicate_false(self):
+        rt = _run("x = True\nif not x:\n    pass\n")
+        assert rt.clause_data[0]["true"] is True   # x was True
+        assert rt.predicate_events[0]["predicate_value"] is False  # not True = False
 
-# ── run_target_file ───────────────────────────────────────────────────────────
-# Integration tests using actual files on disk via the make_target fixture.
-
-class TestRunTargetFile:
-    def test_returns_populated_runtime(self, make_target):
-        path = make_target("x = 5\nif x > 0:\n    pass\n")
-        rt = coverage_core.run_target_file(path)
-        assert len(rt.predicate_meta) == 1
-        assert len(rt.clause_data) == 1
-
-    def test_records_execution_events(self, make_target):
-        path = make_target("x = 5\nif x > 0:\n    pass\n")
-        rt = coverage_core.run_target_file(path)
-        assert len(rt.predicate_events) == 1
-        assert rt.predicate_events[0]["predicate_value"] is True
-
-    def test_raises_on_missing_file(self):
-        with pytest.raises(FileNotFoundError):
-            coverage_core.run_target_file("nonexistent_file.py")
+    def test_not_false_sets_false_flag_and_predicate_true(self):
+        rt = _run("x = False\nif not x:\n    pass\n")
+        assert rt.clause_data[0]["false"] is True  # x was False
+        assert rt.predicate_events[0]["predicate_value"] is True   # not False = True

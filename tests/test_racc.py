@@ -61,6 +61,17 @@ class TestFindEventsForContext:
         result = _find_events_for_context([ev1, ev2, ev3], major_cid=0, minor_ctx=((1, True),))
         assert result == [ev1, ev2]
 
+    def test_requires_all_minors_to_match(self):
+        # Event has both minors present and matching
+        ev = self._make_event(0, {0: True, 1: True, 2: False}, True)
+        result = _find_events_for_context([ev], major_cid=0, minor_ctx=((1, True), (2, False)))
+        assert result == [ev]
+
+    def test_excludes_when_one_of_two_minors_wrong(self):
+        ev = self._make_event(0, {0: True, 1: True, 2: True}, True)
+        result = _find_events_for_context([ev], major_cid=0, minor_ctx=((1, True), (2, False)))
+        assert result == []
+
 
 # ── _is_masked_by_short_circuit ───────────────────────────────────────────────
 # Returns True when there exists an event where:
@@ -175,8 +186,8 @@ class TestAnalyzeRaccSatisfaction:
         assert reqs[0]["satisfied"] is True
         assert covered == 1
 
-    def test_single_clause_unsatisfied_when_only_true_seen(self):
-        rt = _run("x = True\nif x:\n    pass\n")
+    def test_single_clause_unsatisfied_when_only_false_seen(self):
+        rt = _run("x = False\nif x:\n    pass\n")
         reqs, covered, _ = analyze_racc(rt)
         assert reqs[0]["satisfied"] is False
         assert covered == 0
@@ -327,3 +338,18 @@ class TestAnalyzeRaccMasking:
         total = len(reqs)
         # each requirement is at most one of: satisfied, masked, plain-unsat
         assert covered + masked_count <= total
+
+    def test_masked_on_true_side_for_or_predicate(self):
+        # check(True, False): a=True short-circuits OR → {a=T} → pred=True
+        # check(False, False): both evaluated → {a=F, b=F} → pred=False
+        # Req (major=a, minor=(b=F)) — seeded from second event:
+        #   true_side: needs a=True with b=False together — impossible (short-circuited)
+        #   event {a=T} has b absent → masked[True]=True
+        src = "def check(a, b):\n    if a or b:\n        pass\ncheck(True, False)\ncheck(False, False)\n"
+        rt = _run(src)
+        reqs, _, _ = analyze_racc(rt)
+        cid_a = rt.predicate_meta[0]["clauses"][0]
+        req_a = next(r for r in reqs if r["major_cid"] == cid_a)
+        assert req_a["masked"][True] is True
+        assert req_a["masked"][False] is False
+        assert req_a["masked_by_short_circuit"] is True

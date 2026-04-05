@@ -1,6 +1,8 @@
 import pytest
 from coverage_core import CoverageRuntime, instrument_source, execute_instrumented
 from cc import print_report, run
+from racc import analyze_racc, _find_events_for_context, _is_masked_by_short_circuit, run as racc_run
+from cacc import analyze_cacc, _format_minor_context, run as cacc_run
 
 
 # Helper: build a runtime with pre-populated clause_data without running
@@ -206,3 +208,31 @@ class TestRun:
     def test_run_raises_on_missing_file(self):
         with pytest.raises(FileNotFoundError):
             run("no_such_file.py")
+
+
+# ── racc: integration ──────────────────────────────────────────────────────────
+
+class TestRaccRun:
+    def test_produces_report_output(self, make_target, capsys):
+        path = make_target("def check(x):\n    if x:\n        pass\ncheck(True)\ncheck(False)\n")
+        racc_run(path)
+        out = capsys.readouterr().out
+        assert "Restricted Active Clause Coverage" in out
+
+    def test_raises_on_missing_file(self):
+        with pytest.raises(FileNotFoundError):
+            racc_run("no_such_file.py")
+
+
+# ── cacc: integration ──────────────────────────────────────────────────────────
+
+class TestCaccRun:
+    def test_produces_report_output(self, make_target, capsys):
+        path = make_target("def check(x):\n    if x:\n        pass\ncheck(True)\ncheck(False)\n")
+        cacc_run(path)
+        out = capsys.readouterr().out
+        assert "Correlated Active Clause Coverage" in out
+
+    def test_raises_on_missing_file(self):
+        with pytest.raises(FileNotFoundError):
+            cacc_run("no_such_file.py")

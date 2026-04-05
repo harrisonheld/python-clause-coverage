@@ -39,6 +39,20 @@ class TestAnalyzeCaccRequirementGeneration:
         reqs, _ = analyze_cacc(rt)
         assert len(reqs) == 1
 
+    def test_not_predicate_generates_one_requirement(self):
+        # `if not x:` — single clause, minor_ctx=(), flipping x always changes outcome
+        rt = _run("x = True\nif not x:\n    pass\n")
+        reqs, _ = analyze_cacc(rt)
+        assert len(reqs) == 1
+        assert reqs[0]["minor_ctx"] == ()
+
+    def test_not_predicate_satisfied_when_both_sides_seen(self):
+        src = "def check(x):\n    if not x:\n        pass\ncheck(True)\ncheck(False)\n"
+        rt = _run(src)
+        reqs, covered = analyze_cacc(rt)
+        assert covered == 1
+        assert reqs[0]["satisfied"] is True
+
     def test_single_clause_requirement_has_empty_minor_ctx(self):
         rt = _run("x = True\nif x:\n    pass\n")
         reqs, _ = analyze_cacc(rt)
