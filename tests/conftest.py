@@ -1,4 +1,5 @@
-import pytest, coverage_core
+import pytest
+import coverage_core
 
 # The 'rt' fixture provides a fresh, empty CoverageRuntime instance to any test
 # that declares 'rt' as a parameter. Each test gets its own isolated instance,
