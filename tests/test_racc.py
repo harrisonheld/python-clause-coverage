@@ -353,3 +353,17 @@ class TestAnalyzeRaccMasking:
         assert req_a["masked"][True] is True
         assert req_a["masked"][False] is False
         assert req_a["masked_by_short_circuit"] is True
+
+    def test_masked_in_mixed_operator_predicate(self):
+        # Event 1 {c0:T,c1:T} has c2 absent — c1=True exists but minor context (c2=F) missing
+        # → true_side of req (major=c1, minor=(c0=T,c2=F)) is masked
+        src = (
+            "def check(a, b, c):\n    if (a and b) or c:\n        pass\n"
+            "check(True, True, False)\ncheck(True, False, False)\n"
+        )
+        rt = _run(src)
+        reqs, _, _ = analyze_racc(rt)
+        cid_b = rt.predicate_meta[0]["clauses"][1]
+        req_b = next(r for r in reqs if r["major_cid"] == cid_b)
+        assert req_b["masked_by_short_circuit"] is True
+        assert req_b["masked"][True] is True

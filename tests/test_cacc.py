@@ -140,6 +140,17 @@ class TestAnalyzeCaccRequirementGeneration:
         pids = {r["predicate_id"] for r in reqs}
         assert len(pids) == 2
 
+    def test_mixed_and_or_predicate_seeds_only_from_fully_evaluated_events(self):
+        # `(a and b) or c` — event from check(T,T,F) has c2 absent (OR short-circuited),
+        # so it cannot seed any requirement. Only event from check(T,F,F) seeds reqs.
+        src = (
+            "def check(a, b, c):\n    if (a and b) or c:\n        pass\n"
+            "check(True, True, False)\ncheck(True, False, False)\n"
+        )
+        rt = _run(src)
+        reqs, _ = analyze_cacc(rt)  # or analyze_racc
+        assert len(reqs) == 2  # only c1 and c2 get requirements, not c0
+
 
 # ── Satisfaction checking ─────────────────────────────────────────────────────
 # CACC satisfaction: a requirement is satisfied when there exists *any* event
